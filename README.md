@@ -69,30 +69,83 @@ Needs a JDK 17 and Gradle; `build.ps1` uses the same portable toolchain as the A
 
 Output is a self-contained jar: `teleroute-proxy-1.0-all.jar`. Deployment is that file plus a JRE.
 
-## Deploy
+## Install on any Linux host
 
-On the server (Debian/Ubuntu LXC or VM):
+One command on any systemd distribution. It installs a JRE if missing, fetches the latest
+release, generates a password, and starts the service.
+
+**If the repository is public:**
 
 ```bash
-apt install -y openjdk-17-jre-headless
-adduser --system --group --no-create-home teleroute
-mkdir -p /opt/teleroute /etc/teleroute
+curl -fsSL https://github.com/brhoom98x/teleroute-proxy/releases/latest/download/install.sh -o install.sh
+sudo bash install.sh
 ```
 
-Copy `teleroute-proxy-1.0-all.jar` to `/opt/teleroute/teleroute-proxy.jar`, then:
+**If the repository is private** every target machine needs a token with `Contents: read` on this
+repository — create a fine-grained PAT at github.com/settings/tokens:
 
 ```bash
+export GITHUB_TOKEN=github_pat_xxxxxxxx
+curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+  -H "Accept: application/octet-stream" \
+  "$(curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+     https://api.github.com/repos/brhoom98x/teleroute-proxy/releases/latest \
+     | jq -r '.assets[] | select(.name=="install.sh") | .url')" -o install.sh
+sudo -E bash install.sh
+```
+
+> Distributing a read token to every machine is worse for security than a public repository that
+> contains no secrets. There are none here: the password is generated per install and never
+> committed. If this is going on more than one or two hosts, consider making the repository public
+> and using the simple form above.
+
+Options, all optional:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `BIND` | `0.0.0.0` | Set to a WireGuard/Tailscale address to keep it off the public internet |
+| `PORT` | `19808` | Listening port |
+| `VERSION` | latest | Install a specific tag, e.g. `v1.0` |
+| `REPO` | `brhoom98x/teleroute-proxy` | Source repository |
+
+```bash
+sudo BIND=10.66.0.3 PORT=19808 bash install.sh
+```
+
+The installer is **safe to re-run** — an existing `/etc/teleroute/teleroute.conf` is never
+overwritten, so upgrading does not invalidate the credentials already saved in your Telegram
+client. It verifies the jar against `SHA256SUMS` and refuses to install on a mismatch.
+
+Read the password back at any time:
+
+```bash
+sudo grep ^password= /etc/teleroute/teleroute.conf
+```
+
+### Firewall
+
+The proxy authenticates every client and relays only to Telegram, but exposing it is still a
+choice. Prefer a tunnel; if you must open the port, scope it:
+
+```bash
+ufw allow from <your phone's network> to any port 19808 proto tcp
+```
+
+## Deploy by hand
+
+If you would rather not run a script, the installer does nothing exotic:
+
+```bash
+apt install -y default-jre-headless
+adduser --system --group --no-create-home teleroute
+mkdir -p /opt/teleroute /etc/teleroute
+# copy teleroute-proxy-<version>.jar to /opt/teleroute/teleroute-proxy.jar
 cp teleroute.conf.example /etc/teleroute/teleroute.conf
-openssl rand -base64 24        # use this as the password
+openssl rand -base64 24          # paste as the password
 nano /etc/teleroute/teleroute.conf
 chown teleroute:teleroute /etc/teleroute/teleroute.conf
 chmod 600 /etc/teleroute/teleroute.conf
-```
-
-Install the unit and start it:
-
-```bash
-cp deploy/teleroute-proxy.service /etc/systemd/system/
+cp teleroute-proxy.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now teleroute-proxy
 journalctl -u teleroute-proxy -f
@@ -100,6 +153,7 @@ journalctl -u teleroute-proxy -f
 
 The unit runs as an unprivileged user with an empty capability set, a read-only system and only
 `AF_INET`/`AF_INET6` allowed, because the process needs a socket and nothing else.
+
 
 ## Point Telegram at it
 
