@@ -129,7 +129,11 @@ else
     # any tool that takes a proxy as socks5://user:pass@host:port -- curl rejects it outright,
     # and it has to be percent-encoded in a tg://socks deep link. 32 alphanumerics is ~190 bits,
     # so nothing is lost by dropping the awkward characters.
-    NEW_PASSWORD=$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)
+    # Bounded read, not "tr < /dev/urandom | head -c 32": head closing the pipe sends tr SIGPIPE,
+    # and under "set -o pipefail" that aborts the installer. 512 bytes yields ~124 usable
+    # characters on average, far more than the 32 taken.
+    NEW_PASSWORD=$(head -c 512 /dev/urandom | LC_ALL=C tr -dc "A-Za-z0-9" | cut -c1-32)
+    [ ${#NEW_PASSWORD} -eq 32 ] || die "Password generation produced ${#NEW_PASSWORD} characters, expected 32."
     umask 077
     cat > "$CONF" <<EOF
 bind=$BIND
