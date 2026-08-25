@@ -1,0 +1,4 @@
+# A shell script with CRLF fails on Linux with "bad interpreter: /usr/bin/env bash^M".
+# core.autocrlf=true on a Windows checkout makes that easy to do by accident.
+*.sh text eol=lf
+*.service text eol=lf
