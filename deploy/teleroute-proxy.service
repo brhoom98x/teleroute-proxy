@@ -1,0 +1,37 @@
+[Unit]
+Description=TeleRoute SOCKS5 proxy for Telegram
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=teleroute
+Group=teleroute
+ExecStart=/usr/bin/java -Xmx128m -jar /opt/teleroute/teleroute-proxy.jar /etc/teleroute/teleroute.conf
+Restart=on-failure
+RestartSec=5
+
+# The process needs a socket and nothing else, so take everything else away. If it is ever
+# compromised through the one port it exposes, this is what limits the blast radius.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+
+# Journal captures stdout; view with: journalctl -u teleroute-proxy -f
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

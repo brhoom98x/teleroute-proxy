@@ -1,0 +1,30 @@
+# TeleRoute proxy configuration.
+#
+# Copy to /etc/teleroute/teleroute.conf, edit, then:
+#     chmod 600 /etc/teleroute/teleroute.conf
+#     chown teleroute:teleroute /etc/teleroute/teleroute.conf
+#
+# Every key can be overridden by an environment variable, which is the better choice if you would
+# rather the password never touch the filesystem: TELEROUTE_BIND, TELEROUTE_PORT,
+# TELEROUTE_USERNAME, TELEROUTE_PASSWORD, TELEROUTE_SCAN_INTERVAL, TELEROUTE_ALLOW_NON_TELEGRAM.
+
+# Interface to listen on. 0.0.0.0 is every interface, which is what you want if the phone reaches
+# this over the internet. If you put the server behind WireGuard or Tailscale -- strongly
+# preferable -- bind the tunnel address instead and never expose the port publicly at all.
+bind=0.0.0.0
+
+port=19808
+
+# Required. The proxy refuses to start without them, and refuses a password under 12 characters.
+# Generate one rather than inventing it:  openssl rand -base64 24
+username=CHANGE_ME
+password=CHANGE_ME_TO_SOMETHING_LONG
+
+# How often to re-measure Telegram's front-ends, in seconds. The server is on mains power, so
+# unlike the phone build this is a flat interval; 300 is a sensible floor.
+scanIntervalSeconds=300
+
+# Leave false. When false the proxy only relays to Telegram's published networks, so a leaked
+# password costs you Telegram bandwidth instead of handing someone an open relay they can point
+# anywhere. Set true only on a private network you control.
+allowNonTelegram=false
