@@ -125,7 +125,11 @@ NEW_PASSWORD=""
 if [ -f "$CONF" ]; then
     log "Keeping the existing config at $CONF (password unchanged)"
 else
-    NEW_PASSWORD=$(openssl rand -base64 24 2>/dev/null || head -c 18 /dev/urandom | base64)
+    # Alphanumeric on purpose. base64 emits '+', '/' and '=', and a '/' in the password breaks
+    # any tool that takes a proxy as socks5://user:pass@host:port -- curl rejects it outright,
+    # and it has to be percent-encoded in a tg://socks deep link. 32 alphanumerics is ~190 bits,
+    # so nothing is lost by dropping the awkward characters.
+    NEW_PASSWORD=$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)
     umask 077
     cat > "$CONF" <<EOF
 bind=$BIND
