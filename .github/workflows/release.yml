@@ -37,8 +37,6 @@ jobs:
           test -f "$SRC" || { echo "fat jar missing"; exit 1; }
           cp "$SRC" "teleroute-proxy-${VERSION}.jar"
           cp deploy/teleroute-proxy.service teleroute-proxy.service
-          cp teleroute.conf.example teleroute.conf.example
-          cp install.sh install.sh
           sha256sum "teleroute-proxy-${VERSION}.jar" > SHA256SUMS
           echo "jar=teleroute-proxy-${VERSION}.jar" >> "$GITHUB_OUTPUT"
 
